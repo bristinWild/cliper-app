@@ -1,46 +1,7 @@
-import { ActivityItem, ChatMessage, Repository, TaskEvent } from "./types";
+import { ActivityItem, ChatMessage, TaskEvent } from "./types";
 
 const now = Date.now();
 const min = 60_000;
-
-export const mockRepositories: Repository[] = [
-  {
-    id: "swiftment",
-    name: "swiftment",
-    language: "TypeScript",
-    framework: "React Native",
-    githubUrl: "github.com/bristin/swiftment",
-    lastCommit: "feat: onboarding polish",
-    lastSync: "5 min ago",
-    memoryCoverage: 0.92,
-    memoryStatus: "fresh",
-    agentStatus: "online",
-  },
-  {
-    id: "ozon-core",
-    name: "ozon-core",
-    language: "Rust",
-    framework: "Anchor",
-    githubUrl: "github.com/bristin/ozon-core",
-    lastCommit: "fix: restake epoch rounding",
-    lastSync: "22 min ago",
-    memoryCoverage: 0.78,
-    memoryStatus: "fresh",
-    agentStatus: "busy",
-  },
-  {
-    id: "zk-notary",
-    name: "zk-notary",
-    language: "TypeScript",
-    framework: "Next.js",
-    githubUrl: "github.com/bristin/zk-notary",
-    lastCommit: "chore: bump circom deps",
-    lastSync: "2 h ago",
-    memoryCoverage: 0.54,
-    memoryStatus: "stale",
-    agentStatus: "offline",
-  },
-];
 
 export const mockActivity: ActivityItem[] = [
   { id: "a1", repoName: "swiftment", kind: "task", message: "Task completed · Refactor auth guard", at: now - 3 * min },

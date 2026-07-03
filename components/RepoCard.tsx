@@ -1,43 +1,51 @@
 import React from "react";
 import { Text, View } from "react-native";
+import { statusMeta, timeAgo } from "../lib/format";
 import { colors, mono } from "../lib/theme";
 import { Repository } from "../lib/types";
-import { Card, Pill, ProgressBar, StatusDot } from "./ui";
+import { Card, Pill } from "./ui";
 
 export function RepoCard({ repo, onPress }: { repo: Repository; onPress: () => void }) {
-  const agentLabel =
-    repo.agentStatus === "online" ? "Agent online" : repo.agentStatus === "busy" ? "Agent busy" : "Agent offline";
+  const status = statusMeta(repo.status);
 
   return (
     <Card onPress={onPress} style={{ gap: 12 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <Text style={[mono, { color: colors.text, fontSize: 17, fontWeight: "700", flexShrink: 1 }]} numberOfLines={1}>
+          {repo.name}
+        </Text>
+        <Pill label={status.label} tone={status.tone} />
+      </View>
+
+      <Text style={[mono, { color: colors.textSecondary, fontSize: 12.5 }]} numberOfLines={1}>
+        {repo.github_owner}/{repo.github_repo}
+      </Text>
+
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <Text style={[mono, { color: colors.text, fontSize: 17, fontWeight: "700" }]}>{repo.name}</Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <StatusDot status={repo.agentStatus} />
-          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{agentLabel}</Text>
+          <BranchGlyph />
+          <Text style={[mono, { color: colors.textSecondary, fontSize: 12 }]}>{repo.branch}</Text>
         </View>
-      </View>
-
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        <Pill label={repo.language} tone="accent" />
-        <Pill label={repo.framework} />
-        <Pill
-          label={repo.memoryStatus === "building" ? "Syncing…" : `Synced ${repo.lastSync}`}
-          tone={repo.memoryStatus === "stale" ? "warning" : "neutral"}
-        />
-      </View>
-
-      <View style={{ gap: 6 }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-          <Text style={{ color: colors.textFaint, fontSize: 11, letterSpacing: 0.4, textTransform: "uppercase" }}>
-            Memory coverage
-          </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: "600" }}>
-            {Math.round(repo.memoryCoverage * 100)}%
-          </Text>
-        </View>
-        <ProgressBar value={repo.memoryCoverage} />
+        <Text style={{ color: colors.textFaint, fontSize: 12 }}>Updated {timeAgo(repo.updated_at)}</Text>
       </View>
     </Card>
   );
+}
+
+/** Tiny git-branch glyph built from Views. */
+function BranchGlyph() {
+  return (
+    <View style={{ width: 12, height: 14, justifyContent: "space-between" }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+        <Dot />
+        <Dot />
+      </View>
+      <View style={{ alignSelf: "flex-start", marginLeft: 2.5, width: 1.5, height: 5, backgroundColor: colors.textFaint }} />
+      <Dot />
+    </View>
+  );
+}
+
+function Dot() {
+  return <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: colors.textFaint }} />;
 }

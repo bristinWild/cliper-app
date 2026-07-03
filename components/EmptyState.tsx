@@ -5,7 +5,7 @@ import { colors, mono, radius } from "../lib/theme";
 /** Terminal-styled empty state — the CLI is the product's front door. */
 export function EmptyState() {
   return (
-    <View style={{ alignItems: "center", paddingTop: 64, paddingHorizontal: 24, gap: 20 }}>
+    <View style={{ alignItems: "center", paddingTop: 48, paddingHorizontal: 24, gap: 20 }}>
       <View
         style={{
           width: "100%",
@@ -25,15 +25,13 @@ export function EmptyState() {
         <Text style={[mono, { color: colors.textSecondary, fontSize: 13 }]}>
           <Text style={{ color: colors.accent }}>$ </Text>cliper init
         </Text>
-        <Text style={[mono, { color: colors.textSecondary, fontSize: 13 }]}>
-          <Text style={{ color: colors.accent }}>$ </Text>cliper sync
-        </Text>
         <Text style={[mono, { color: colors.textFaint, fontSize: 13 }]}>▌</Text>
       </View>
       <View style={{ alignItems: "center", gap: 6 }}>
-        <Text style={{ color: colors.text, fontSize: 17, fontWeight: "700" }}>No repositories yet</Text>
+        <Text style={{ color: colors.text, fontSize: 17, fontWeight: "700" }}>No repositories connected yet</Text>
         <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: "center", lineHeight: 21 }}>
-          Run these inside any project on your laptop, then pull to refresh.
+          Run <Text style={[mono, { color: colors.accent }]}>cliper init</Text> inside a Git repository to
+          connect it to Cliper, then pull to refresh.
         </Text>
       </View>
     </View>

@@ -9,7 +9,7 @@ import { colors, mono, radius } from "../../lib/theme";
 export default function Profile() {
   const router = useRouter();
   const { user, repositories, signOut } = useCliper();
-  const agentsOnline = repositories.filter((r) => r.agentStatus !== "offline").length;
+  const readyCount = repositories.filter((r) => r.status.toLowerCase() === "ready").length;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={["top"]}>
@@ -35,8 +35,8 @@ export default function Profile() {
             <Text style={{ color: colors.textSecondary, fontSize: 12.5 }}>Repositories</Text>
           </Card>
           <Card style={{ flex: 1, gap: 4 }}>
-            <Text style={{ color: colors.success, fontSize: 26, fontWeight: "800" }}>{agentsOnline}</Text>
-            <Text style={{ color: colors.textSecondary, fontSize: 12.5 }}>Agents connected</Text>
+            <Text style={{ color: colors.success, fontSize: 26, fontWeight: "800" }}>{readyCount}</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 12.5 }}>Ready to chat</Text>
           </Card>
         </View>
 

@@ -1,17 +1,23 @@
 import { create } from "zustand";
 import { clearSession, Session } from "./auth";
-import { mockActivity, mockRepositories, taskScript } from "./mock";
+import { mockActivity, taskScript } from "./mock";
+import { getRepositories } from "./repositories";
 import { ActivityItem, Repository, Task, TaskEvent, User } from "./types";
 
 interface CliperState {
   user: User | null;
   token: string | null;
+
   repositories: Repository[];
+  reposLoading: boolean;
+  reposError: string | null;
+
   activity: ActivityItem[];
   tasks: Task[];
+
   setSession: (session: Session) => void;
   signOut: () => void;
-  syncRepo: (id: string) => void;
+  fetchRepositories: () => Promise<void>;
   runTask: (repoId: string, prompt: string) => string; // returns taskId
 }
 
@@ -20,8 +26,12 @@ let taskTimers: ReturnType<typeof setInterval>[] = [];
 export const useCliper = create<CliperState>((set, get) => ({
   user: null,
   token: null,
-  repositories: mockRepositories,
-  activity: mockActivity,
+
+  repositories: [],
+  reposLoading: false,
+  reposError: null,
+
+  activity: mockActivity, // TODO: swap for GET /repositories/:id/activity when backend lands
   tasks: [],
 
   setSession: (session) => set({ user: session.user, token: session.token }),
@@ -30,41 +40,23 @@ export const useCliper = create<CliperState>((set, get) => ({
     taskTimers.forEach(clearInterval);
     taskTimers = [];
     void clearSession(); // wipe JWT from SecureStore
-    set({ user: null, token: null, tasks: [] });
+    set({ user: null, token: null, tasks: [], repositories: [], reposError: null });
   },
 
-  syncRepo: (id) => {
-    set((s) => ({
-      repositories: s.repositories.map((r) =>
-        r.id === id ? { ...r, memoryStatus: "building" } : r
-      ),
-    }));
-    setTimeout(() => {
-      set((s) => ({
-        repositories: s.repositories.map((r) =>
-          r.id === id
-            ? {
-              ...r,
-              memoryStatus: "fresh",
-              lastSync: "just now",
-              memoryCoverage: Math.min(1, r.memoryCoverage + 0.04),
-            }
-            : r
-        ),
-        activity: [
-          {
-            id: `act-${Date.now()}`,
-            repoName: id,
-            kind: "sync",
-            message: "Memory synced",
-            at: Date.now(),
-          },
-          ...s.activity,
-        ],
-      }));
-    }, 1400);
+  fetchRepositories: async () => {
+    set({ reposLoading: true, reposError: null });
+    try {
+      const repositories = await getRepositories();
+      set({ repositories, reposLoading: false });
+    } catch (err) {
+      set({
+        reposLoading: false,
+        reposError: err instanceof Error ? err.message : "Couldn't load repositories",
+      });
+    }
   },
 
+  // Simulated agent task stream — replace setInterval with the /ws subscription.
   runTask: (repoId, prompt) => {
     const taskId = `task-${Date.now()}`;
     const task: Task = { id: taskId, repoId, prompt, status: "queued", events: [] };
@@ -83,23 +75,23 @@ export const useCliper = create<CliperState>((set, get) => ({
         tasks: s.tasks.map((t) =>
           t.id === taskId
             ? {
-              ...t,
-              status: done ? "completed" : i === 0 ? "queued" : "running",
-              events: [...t.events, ev],
-            }
+                ...t,
+                status: done ? "completed" : i === 0 ? "queued" : "running",
+                events: [...t.events, ev],
+              }
             : t
         ),
         activity: done
           ? [
-            {
-              id: `act-${Date.now()}`,
-              repoName: repoId,
-              kind: "task" as const,
-              message: `Task completed · ${prompt.slice(0, 42)}`,
-              ...{ at: Date.now() },
-            },
-            ...s.activity,
-          ]
+              {
+                id: `act-${Date.now()}`,
+                repoName: repoId,
+                kind: "task" as const,
+                message: `Task completed · ${prompt.slice(0, 42)}`,
+                at: Date.now(),
+              },
+              ...s.activity,
+            ]
           : s.activity,
       }));
       i += 1;

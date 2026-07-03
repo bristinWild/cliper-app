@@ -62,6 +62,11 @@ export async function clearSession() {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
 }
 
+/** Raw JWT for authorized API calls (lib/api.ts). */
+export async function getStoredToken(): Promise<string | null> {
+  return SecureStore.getItemAsync(TOKEN_KEY);
+}
+
 async function fetchMe(token: string): Promise<User | null> {
   try {
     const res = await fetch(`${API_URL}/auth/me`, {

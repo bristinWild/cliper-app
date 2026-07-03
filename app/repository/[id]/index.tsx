@@ -2,7 +2,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Card, Pill, ProgressBar, StatusDot } from "../../../components/ui";
+import { Card, Pill } from "../../../components/ui";
+import { statusMeta, timeAgo } from "../../../lib/format";
 import { useCliper } from "../../../lib/store";
 import { colors, mono, radius } from "../../../lib/theme";
 
@@ -10,15 +11,27 @@ export default function RepoDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const repo = useCliper((s) => s.repositories.find((r) => r.id === id));
-  const syncRepo = useCliper((s) => s.syncRepo);
 
-  if (!repo) return null;
+  if (!repo) {
+    // e.g. deep link after the list was cleared — send the user back to the list.
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={["top"]}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
+          <Text style={{ color: colors.textSecondary }}>Repository not found.</Text>
+          <Pressable onPress={() => router.back()}>
+            <Text style={{ color: colors.accent, fontWeight: "600" }}>Go back</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
+  const status = statusMeta(repo.status);
   const rows: [string, string][] = [
-    ["GitHub", repo.githubUrl],
-    ["Last commit", repo.lastCommit],
-    ["Last sync", repo.memoryStatus === "building" ? "Syncing…" : repo.lastSync],
-    ["Memory", repo.memoryStatus],
+    ["GitHub", `${repo.github_owner}/${repo.github_repo}`],
+    ["Branch", repo.branch],
+    ["Dataset", repo.cognee_dataset],
+    ["Updated", timeAgo(repo.updated_at)],
   ];
 
   return (
@@ -29,17 +42,12 @@ export default function RepoDetails() {
         </Pressable>
 
         <View style={{ gap: 8, marginTop: 4 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <Text style={[mono, { color: colors.text, fontSize: 26, fontWeight: "800" }]}>{repo.name}</Text>
-            <StatusDot status={repo.agentStatus} />
-          </View>
+          <Text style={[mono, { color: colors.text, fontSize: 26, fontWeight: "800" }]} numberOfLines={1}>
+            {repo.name}
+          </Text>
           <View style={{ flexDirection: "row", gap: 8 }}>
-            <Pill label={repo.language} tone="accent" />
-            <Pill label={repo.framework} />
-            <Pill
-              label={repo.agentStatus === "online" ? "Agent online" : repo.agentStatus === "busy" ? "Agent busy" : "Agent offline"}
-              tone={repo.agentStatus === "offline" ? "neutral" : "success"}
-            />
+            <Pill label={status.label} tone={status.tone} />
+            <Pill label={repo.branch} tone="accent" />
           </View>
         </View>
 
@@ -52,28 +60,14 @@ export default function RepoDetails() {
               </Text>
             </View>
           ))}
-          <View style={{ gap: 6, marginTop: 2 }}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ color: colors.textFaint, fontSize: 13 }}>Memory coverage</Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 12.5, fontWeight: "600" }}>
-                {Math.round(repo.memoryCoverage * 100)}%
-              </Text>
-            </View>
-            <ProgressBar value={repo.memoryCoverage} />
-          </View>
         </Card>
 
         <View style={{ flexDirection: "row", gap: 10 }}>
-          <ActionButton
-            label={repo.memoryStatus === "building" ? "Syncing…" : "Sync"}
-            variant="ghost"
-            onPress={() => syncRepo(repo.id)}
-          />
-          <ActionButton label="Chat" variant="primary" onPress={() => router.push(`/repo/${repo.id}/chat`)} />
+          <ActionButton label="Chat" variant="primary" onPress={() => router.push(`/repository/${repo.id}/chat`)} />
           <ActionButton
             label="Run task"
             variant="ghost"
-            onPress={() => router.push({ pathname: `/repo/${repo.id}/chat`, params: { mode: "Agent" } })}
+            onPress={() => router.push({ pathname: `/repository/${repo.id}/chat`, params: { mode: "Agent" } })}
           />
         </View>
       </ScrollView>

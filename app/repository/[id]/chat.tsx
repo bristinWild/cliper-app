@@ -1,12 +1,14 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Markdown } from "../../../components/Markdown";
 import { SegmentedControl } from "../../../components/SegmentedControl";
 import { TaskTimeline } from "../../../components/TaskTimeline";
-import { StatusDot } from "../../../components/ui";
-import { fakeAnswer, seedMessages } from "../../../lib/mock";
+import { Pill } from "../../../components/ui";
+import { statusMeta } from "../../../lib/format";
+import { askRepository } from "../../../lib/chat";
+import { seedMessages } from "../../../lib/mock";
 import { useCliper } from "../../../lib/store";
 import { colors, mono, radius } from "../../../lib/theme";
 import { ChatMessage } from "../../../lib/types";
@@ -66,12 +68,23 @@ export default function Chat() {
     setMessages((prev) => [...prev, userMsg]);
 
     if (mode === "Ask") {
-      // POST /repositories/:id/chat
       setThinking(true);
-      setTimeout(() => {
-        setThinking(false);
-        setMessages((prev) => [...prev, fakeAnswer(content)]);
-      }, 900);
+      askRepository(id!, content)
+        .then((answer) => setMessages((prev) => [...prev, answer]))
+        .catch((err: unknown) =>
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `err${Date.now()}`,
+              role: "assistant" as const,
+              content: `Couldn't reach repository memory: ${
+                err instanceof Error ? err.message : "unknown error"
+              }`,
+              createdAt: Date.now(),
+            },
+          ])
+        )
+        .finally(() => setThinking(false));
     } else {
       // POST /repositories/:id/tasks → then events stream over /ws
       const taskId = runTask(id!, content);
@@ -85,6 +98,10 @@ export default function Chat() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={["top", "bottom"]}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
       {/* Header */}
       <View
         style={{
@@ -102,7 +119,7 @@ export default function Chat() {
         </Pressable>
         <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Text style={[mono, { color: colors.text, fontSize: 16, fontWeight: "700" }]}>{repo?.name}</Text>
-          <StatusDot status={repo?.agentStatus ?? "offline"} />
+          {repo && <Pill label={statusMeta(repo.status).label} tone={statusMeta(repo.status).tone} />}
         </View>
         <View style={{ width: 150 }}>
           <SegmentedControl options={["Ask", "Agent"] as const} value={mode} onChange={setMode} />
@@ -212,6 +229,7 @@ export default function Chat() {
           </Pressable>
         </View>
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

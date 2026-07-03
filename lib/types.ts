@@ -1,16 +1,15 @@
 export type AgentStatus = "online" | "offline" | "busy";
 
+/** Repository record as registered by `cliper init` (Supabase `repositories` table). */
 export interface Repository {
   id: string;
   name: string;
-  language: string;
-  framework: string;
-  githubUrl: string;
-  lastCommit: string;
-  lastSync: string;
-  memoryCoverage: number; // 0..1
-  memoryStatus: "fresh" | "stale" | "building";
-  agentStatus: AgentStatus;
+  github_owner: string;
+  github_repo: string;
+  branch: string;
+  status: string; // e.g. "ready" | "indexing" | "error" — display-mapped, not enforced
+  cognee_dataset: string;
+  updated_at: string; // ISO timestamp
 }
 
 export interface ChatMessage {
