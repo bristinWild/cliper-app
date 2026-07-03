@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Cliper",
+    "slug": "cliper",
+    "version": "1.0.0",
+    "scheme": "cliper",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#09090B",
+    "splash": {
+      "backgroundColor": "#09090B"
+    },
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "backgroundColor": "#09090B"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-web-browser",
+      "expo-secure-store"
+    ]
+  }
+}
