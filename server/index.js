@@ -16,6 +16,7 @@ const auth = require("./middleware/auth");
 const githubAuth = require("./middleware/githubAuth");
 const http = require("http");
 const { WebSocketServer } = require("ws");
+const { encrypt, decrypt } = require("./lib/crypto");
 
 const {
   GITHUB_CLIENT_ID,
@@ -134,7 +135,7 @@ app.get("/auth/github/callback", async (req, res) => {
           github_id: String(ghUser.id),
           username: ghUser.login,
           avatar_url: ghUser.avatar_url,
-          github_access_token: access_token,
+          github_access_token: encrypt(access_token),
         },
         {
           onConflict: "github_id",
@@ -258,7 +259,7 @@ app.post("/repositories/:id/chat", auth, async (req, res) => {
     return res.status(400).json({ error: "Missing question" });
   }
 
-  // Repo must belong to the signed-in user — also gives us the dataset name.
+  // Get repo + user's Cognee credentials in one go
   const { data: repo, error } = await supabase
     .from("repositories")
     .select("id, cognee_dataset")
@@ -270,18 +271,31 @@ app.post("/repositories/:id/chat", auth, async (req, res) => {
     return res.status(404).json({ error: "Repository not found" });
   }
 
+  const { data: user } = await supabase
+    .from("users")
+    .select("cognee_base_url, cognee_api_key")
+    .eq("id", req.user.sub)
+    .single();
+
+  if (!user?.cognee_base_url || !user?.cognee_api_key) {
+    return res.status(400).json({ error: "Cognee not configured. Run: cliper auth cognee" });
+  }
+
+  const cogneeBaseUrl = user.cognee_base_url;
+  const cogneeApiKey = decrypt(user.cognee_api_key);
+
   try {
     const started = Date.now();
-    const cogneeRes = await fetch(`${process.env.COGNEE_BASE_URL}/api/v1/search`, {
+    const cogneeRes = await fetch(`${cogneeBaseUrl}/api/v1/search`, {
       method: "POST",
       headers: {
-        "X-Api-Key": process.env.COGNEE_API_KEY,
+        "X-Api-Key": cogneeApiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         query: question,
         search_type: "GRAPH_COMPLETION",
-        datasets: [repo.cognee_dataset], // "cliper-cliper-memory"
+        datasets: [repo.cognee_dataset],
       }),
     });
 
@@ -292,7 +306,6 @@ app.post("/repositories/:id/chat", auth, async (req, res) => {
     }
 
     const results = await cogneeRes.json();
-    // Shape (per your CLI's recallContext): [{ dataset_id, dataset_name, search_result: string[] }]
     const answer = (results ?? [])
       .flatMap((r) => r.search_result ?? [])
       .join("\n\n")
@@ -359,6 +372,32 @@ wss.on("connection", async (ws, req) => {
   }
 });
 
-server.listen(PORT, "0.0.0.0", () =>
-  console.log(`Cliper server (http + ws) on http://0.0.0.0:${PORT}`)
+/** Store user's Cognee credentials (from cliper auth cognee). */
+app.post("/auth/cognee", githubAuth, async (req, res) => {
+  const { baseUrl, apiKey } = req.body;
+  if (!baseUrl || !apiKey) {
+    return res.status(400).json({ error: "Missing baseUrl or apiKey" });
+  }
+
+  try {
+    const { error } = await supabase
+      .from("users")
+      .update({
+        cognee_base_url: baseUrl,
+        cognee_api_key: encrypt(apiKey),
+      })
+      .eq("id", req.user.id);
+
+    if (error) return res.status(500).json({ error: "Failed to save" });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Cognee credential save failed:", err.message);
+    res.status(500).json({ error: "Server encryption not configured" });
+  }
+});
+
+server.listen(PORT, () =>
+  console.log(`Cliper server (http + ws) on port ${PORT}`)
 );
+
+
