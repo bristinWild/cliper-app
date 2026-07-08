@@ -17,6 +17,7 @@ const githubAuth = require("./middleware/githubAuth");
 const http = require("http");
 const { WebSocketServer } = require("ws");
 const { encrypt, decrypt } = require("./lib/crypto");
+const cors = require("cors");
 
 const {
   GITHUB_CLIENT_ID,
@@ -32,6 +33,7 @@ if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET || !JWT_SECRET) {
 }
 
 const app = express();
+app.use(cors());
 
 app.use(express.json());
 
@@ -45,12 +47,27 @@ app.use((req, _res, next) => {
 const pendingStates = new Map();
 const agentsOnline = new Map();
 
-// Only ever redirect back into our own app.
+
+// Only ever redirect back into our own apps (mobile deep links + allowlisted web origins).
 function isAllowedRedirect(url) {
-  return (
-    typeof url === "string" &&
-    (url.startsWith("cliper://") || /^exp:\/\/[\w.:-]+\/--\//.test(url) || url.startsWith("exp://"))
-  );
+  if (typeof url !== "string") return false;
+
+  // Mobile: Expo Go + dev/prod builds — unchanged behavior
+  if (url.startsWith("cliper://") || url.startsWith("exp://")) return true;
+
+  // Web app: only explicitly allowlisted origins
+  try {
+    const u = new URL(url);
+    const allowed = (process.env.WEB_APP_ORIGINS ?? "http://localhost:5500,http://127.0.0.1:5500,http://127.0.0.1:4000,http://localhost:4000")
+      .split(",")
+      .map((s) => s.trim());
+    return (
+      (u.protocol === "http:" || u.protocol === "https:") &&
+      allowed.some((origin) => url.startsWith(origin))
+    );
+  } catch {
+    return false;
+  }
 }
 
 
