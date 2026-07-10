@@ -58,7 +58,7 @@ function isAllowedRedirect(url) {
   // Web app: only explicitly allowlisted origins
   try {
     const u = new URL(url);
-    const allowed = (process.env.WEB_APP_ORIGINS ?? "http://localhost:5500,http://127.0.0.1:5500,http://127.0.0.1:4000,http://localhost:4000")
+    const allowed = (process.env.WEB_APP_ORIGINS ?? "http://localhost:5500,http://127.0.0.1:5500,http://127.0.0.1:4000,http://localhost:4000,https://cliper-gamma.vercel.app/")
       .split(",")
       .map((s) => s.trim());
     return (
